@@ -1,0 +1,81 @@
+---
+title: "Assignment 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Question 3
+#### Tutorial exercises 5.7
+
+Create a dataframe with all the information.
+```{r}
+## create a dataframe
+Age <- c(70,71,72,73,74,75)
+Central_exposed_to_risk <- c(1000,1005,1010,1008,1006,998)
+Observed_number_of_death <- c(80,90,95,105,115,125)
+data_5.7 <- data.frame(Age,Central_exposed_to_risk,Observed_number_of_death)
+data_5.7
+```
+
+Then we need to calculate the crude rate by $\mu_x=\frac{d_x}{E^{c}_{x}}$.
+```{r}
+# calculate crude rate qx
+# and add this column to the original dataframe
+data_5.7$Crude <- data_5.7$Observed_number_of_death/data_5.7$Central_exposed_to_risk
+data_5.7
+```
+
+We need to obtain the graduated estimates of $\mu_x$ by using Gompertz' Law and maximum likelihood. Hence the graduated estimates is $\hat{\mu_x} = Bc^{x}$. 
+
+We need to use maximum likelihood to get the value of parameters B and c. The model using in this question is a possion model, and the log-likelihood used for MLE is: $$lnL=\sum_{x=70}^{75}(-{E^{c}_x}Bc^x+d_xln({E^c_xBc^x})-ln(d_x!))$$
+
+We then need to write the function so that we can use the "nlm" function in r to get the MLE of B and c.
+```{r}
+# rename variables
+Ex_c <- data_5.7$Central_exposed_to_risk
+dx <- data_5.7$Observed_number_of_death
+x <- data_5.7$Age
+
+# create a function
+fn <- function(theta){
+  # mu_x = Bc^x
+  # B is theta[1], c is theta[2]
+  log_likelihood = -sum(Ex_c*theta[1]*theta[2]^x)+sum(dx*log(Ex_c*theta[1]*theta[2]^x)) 
+  return(-log_likelihood)
+}
+```
+
+Before we use the "nlm" function, we need to have some initial values for B and c. Initial values are calculated by using linear regression. Since $\hat{\mu_x} = Bc^{x}$, then $ln\hat{\mu_x} = a + bx$. And $ln\hat{\mu_x}$ is approximately equal to $ln{q_x}$. Therefore, we can use $ln{q_x} = a + bx$ to get the initial values of B and c by calculating exp(a) and exp(b) respectively.
+
+```{r}
+## linelar regression to estimate starting point for B & c
+qx <- data_5.7$Crude
+log_qx <- log(qx)
+lm(log_qx ~ x)
+start_B <- exp(-8.67325)
+start_c <- exp(0.08788)
+```
+
+Then sub the initial values of B and c into the "nlm" function to get the MLE of B and c.
+```{r}
+## use the starting point for MLE
+MLE <- nlm(fn,c(start_B,start_c))
+MLE
+B <- MLE$estimate[1]
+c <- MLE$estimate[2]
+```
+
+Now we can use $\hat{\mu_x} = Bc^{x}$ to calculate the graduated estimates of the force of mortality.
+```{r}
+## use the estimated B and c to calculate graduated estimate mu
+data_5.7$Graduated <- B*c^x
+data_5.7$Graduated
+data_5.7
+```
+
+
+
+
