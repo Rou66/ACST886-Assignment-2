@@ -1,0 +1,77 @@
+---
+title: "Assignment 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Question 1
+
+##### (a) Estimate qx
+First, we need to create a dataframe. Actual_Birthday_30 is the acutal date that each life has their 30th birthday, the policy anniversiry which is nearest each life's actual 30th birthday is PA_30, and the policy anniversiry that is nearest each life's actual 31st birthday is PA_31. 
+<br/>
+Date_of_Exit is determined based on whether each life dies, withdrawals or survives. For example, Life A survivals throughout PA_30 and PA_31, then its exit day is PA_31. Life G dies between PA_30 and PA_31, for initial exposed to risk, its exit day is still PA_31. For Life C, the calendar year of withdrawal is 1995, hence the exit day should be the policy anniversiry that has the same calendar year, which is PA_31.
+
+```{r}
+# create a dataframe
+Life <- c('A','B','C','D','E','F','G','H','I','J')
+Actual_Birthday_30 <- c('17/03/1994','06/05/1994','12/08/1994','27/10/1994',
+                        '04/01/1995','18/04/1995','20/05/1995','04/07/1995',
+                        '16/09/1995','11/12/1995')
+PA_30 <- c('20/06/1994','06/08/1994','18/12/1994','04/01/1995','28/04/1995',
+           '16/06/1995','29/10/1995','16/02/1995','22/08/1995','06/03/1996')
+PA_31 <- c('20/06/1995','06/08/1995','18/12/1995','04/01/1996','28/04/1996',
+           '16/06/1996','29/10/1996','16/02/1996','22/08/1996','06/03/1997')
+Date_of_Death <- c('NA','12/06/1993','NA','NA','29/08/1996',"NA",'21/04/1996',
+                   'NA','NA','17/02/1997')
+Date_of_Withdrawal <- c('NA','NA','18/06/1995','NA','NA','12/12/1995','NA',
+                        'NA','22/02/1997','NA')
+## determine date of exit based on date of death, date of withdrawal
+Date_of_Exit <- c('20/06/1995','06/08/1994','18/12/1995','04/01/1996','28/04/1996',
+                  '16/06/1995','29/10/1996','16/02/1996','22/08/1996','06/03/1997')
+data <- data.frame(Life,Actual_Birthday_30,PA_30,PA_31,Date_of_Death,
+                   Date_of_Withdrawal,Date_of_Exit)
+data
+```
+
+Then we can calculate initial exposed to risk which can be calculated as the difference between Date_of_Exit and PA_30.
+
+```{r}
+## calculate initial exposed to risk
+data$Initial_Exposed_to_Risk <- as.Date(as.character(Date_of_Exit),format = "%d/%m/%Y")-
+                                as.Date(as.character(PA_30),format = "%d/%m/%Y")
+data
+```
+
+The total initial exposed to risk for 10 lives is the sum of each initial exposed to risk.
+```{r}
+## Ex
+Ex <- sum(data$Initial_Exposed_to_Risk > 0)
+```
+
+To calculate totla number of death, it can be seen that there are four deaths. However, only Life G and Life J's deaths lie between PA_30 and PA_31. Hence, $d_x$ is 2.
+```{r}
+## count number of death
+dx <- 2
+```
+
+Hence, estimated $q_x$ can be calculated as $q_x=\frac{d_x}{E_x}$.
+```{r}
+## calculate q30
+q30 <- dx/Ex
+q30
+```
+
+Therefore, $\hat{q_x}$ is 0.25.
+
+##### (b) MLE of qx
+
+
+
+
+
+
+
+
