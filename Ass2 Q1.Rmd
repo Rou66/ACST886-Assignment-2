@@ -1,6 +1,8 @@
 ---
 title: "Assignment 2"
-output: html_document
+output:
+  html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -9,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Question 1
 
-##### (a) Estimate qx
+##### (a) Estimate q30
 First, we need to create a dataframe. Actual_Birthday_30 is the acutal date that each life has their 30th birthday, the policy anniversiry which is nearest each life's actual 30th birthday is PA_30, and the policy anniversiry that is nearest each life's actual 31st birthday is PA_31. 
 <br/>
 Date_of_Exit is determined based on whether each life dies, withdrawals or survives. For example, Life A survivals throughout PA_30 and PA_31, then its exit day is PA_31. Life G dies between PA_30 and PA_31, for initial exposed to risk, its exit day is still PA_31. For Life C, the calendar year of withdrawal is 1995, hence the exit day should be the policy anniversiry that has the same calendar year, which is PA_31.
@@ -48,28 +50,46 @@ data
 The total initial exposed to risk for 10 lives is the sum of each initial exposed to risk.
 ```{r}
 ## Ex
-Ex <- sum(data$Initial_Exposed_to_Risk > 0)
+E30 <- sum(data$Initial_Exposed_to_Risk > 0)
 ```
 
 To calculate totla number of death, it can be seen that there are four deaths. However, only Life G and Life J's deaths lie between PA_30 and PA_31. Hence, $d_x$ is 2.
 ```{r}
 ## count number of death
-dx <- 2
+d30 <- 2
 ```
 
-Hence, estimated $q_x$ can be calculated as $q_x=\frac{d_x}{E_x}$.
+Hence, estimated $q_x$ can be calculated as $q_{30}=\frac{d_{30}}{E_{30}}$.
 ```{r}
 ## calculate q30
-q30 <- dx/Ex
+q30 <- d30/E30
 q30
 ```
 
-Therefore, $\hat{q_x}$ is 0.25.
+Therefore, $\hat{q_{30}}$ is 0.25.
 
-##### (b) MLE of qx
+##### (b) MLE of q30
+First, we need to calcualte the central exposed to risk for each Life. The only difference from initial exposed to risk is that for death, the exposure is from PA_30 to the date of death. For life that withdrawals, the exposure is the same. Hence, the new exit date only changes for those who has death between PA_30 and PA_31.
+```{r}
+data$Date_of_Exit_new <- c('20/06/1995','06/08/1994','18/12/1995','04/01/1996',
+                      '28/04/1996','16/06/1995','21/04/1996','16/02/1996',
+                      '22/08/1996','17/02/1997')
+data$Central_Exposed_to_Risk <- as.Date(as.character(data$Date_of_Exit_new),format = "%d/%m/%Y")-
+                                as.Date(as.character(PA_30),format = "%d/%m/%Y")
 
+data
+```
 
+Now, we write down the likelihood function for $q_30$ based on the information. We have 3 lives that survive throughout the period, 2 lives die between PA_30 and PA_31, 1 life dies before PA_30, and 1 life dies after PA_31, 2 lives have withdrawal age at 31 and one life have withdrawal age of 30. Hence, the likelihood function is $$L=(p_{30})^6{_\frac{175}{365.25}q_{30}}{_\frac{348}{365.25}q_{30}}$$ 
 
+```{r}
+fn <- function(qx){
+  Log <- (1-qx)^6*(1-(1-qx)^(175/365.25))*(1-(1-qx)^(348/365.25))
+  return(-Log)
+}
+nlm(fn,p=0.4)
+```
+The MLE of $q_{30}$ is 0.2584841.
 
 
 
