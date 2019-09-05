@@ -1,0 +1,103 @@
+---
+title: "Assignment 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Question 3
+#### Ex 5.8
+
+Create a dataframe with all the information.
+```{r}
+## create a dataframe
+Age <- c(30:49)
+Initial_exposed_to_risk <- c(70000,66672,68375,65420,61779,66091,68514,69560,
+                             65000,66279,67300,65368,65391,62917,66537,62302,
+                             62145,63856,61097,61110)
+Observed_number_of_death <- c(39,43,34,31,23,50,48,43,48,47,62,63,84,86,120,
+                              121,122,162,151,184)
+data_5.8 <- data.frame(Age,Initial_exposed_to_risk,Observed_number_of_death)
+data_5.8
+```
+
+Then we need to calculate the crude rate by $q_x=\frac{d_x}{E_x}$.
+```{r}
+## calcualte crude rate qx
+# and add this column to the original dataframe
+data_5.8$Crude <- Observed_number_of_death/Initial_exposed_to_risk
+data_5.8
+```
+
+We need to obtain the graduated estimates of mortality rate using $ln\frac{\hat{q_x}}{1-\hat{q_x}}=a+bx$ and weighted least squares. Hence, the function we need to create to calculate the values of a and b is: $$f(a,b)=\sum_{x=30}^{49}{w_x[ln\frac{\hat{q_x}}{1-\hat{q_x}}-(a+bx)]^2}$$
+
+For the equation above, $w_x$ is the weight, where in this case, $w_x=E_x$
+
+we then need to write the function so that we can use "nlm" to get the estimates of a and b.
+
+```{r}
+## rename the variables
+qx <- data_5.8$Crude
+wx <- data_5.8$Initial_exposed_to_risk
+x <- data_5.8$Age
+
+## calculate y useing y = ln(qx/1-qx)
+y <- log(qx/(1-qx))
+
+## set up a function
+fn <- function(theta){
+  # a is theta[1], b is theta[2]
+  f_ab <- sum(wx*(y-(theta[1]+theta[2]*x))^2)
+  return(f_ab)
+}
+```
+
+Before we use the "nlm" function, we need to have some initial values for a and b. Initial values are calculated by using linear regression. $ln\frac{\hat{q_x}}{1-\hat{q_x}}=a+bx$
+
+```{r}
+## linear regression 
+lm(y~x)
+start_a <- -10.8629
+start_b <- 0.1003
+```
+
+Then sub the initial values of a and b into the "nlm" function to get the MLE of a and b.
+```{r}
+## Calculating estimated values of a and b
+estimate <- nlm(fn,c(start_a,start_b))
+estimate
+a1 <- estimate$estimate[1]
+b1 <- estimate$estimate[2]
+```
+
+Now we can now calculate the graduated estimates of mortality by ranging $ln\frac{\hat{q_x}}{1-\hat{q_x}}=a+bx$ into $\hat{q_x}=\frac{e^{(a+bx)}}{1+e^{(a+bx)}}$
+
+```{r}
+## use the estimated a,b to calculate graduated qx
+## qx_grad = exp(a+bx)/(1+exp(a+bx))
+data_5.8$Graduated_1 <- exp(a1+b1*x)/(1+exp(a1+b1*x))
+data_5.8$Graduated_1
+data_5.8
+```
+
+Try other inital values to see if we can get a better estimates of mortality.
+```{r}
+## try with different intital values
+start_a = -10
+start_b = 0
+
+estimate <- nlm(fn,c(start_a,start_b))
+estimate
+a2 <- estimate$estimate[1]
+b2 <- estimate$estimate[2]
+
+## calculate new graduated value with new a and b
+data_5.8$Graduated_2 <- exp(a2+b2*x)/(1+exp(a2+b2*x))
+data_5.8$Graduated_2
+data_5.8
+```
+
+
+
