@@ -1,0 +1,252 @@
+---
+title: "Assignment 2"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Question 3
+#### Tutorial exercises 5.7
+
+Create a dataframe with all the information.
+```{r}
+## create a dataframe
+Age <- c(70,71,72,73,74,75)
+Central_exposed_to_risk <- c(1000,1005,1010,1008,1006,998)
+Observed_number_of_death <- c(80,90,95,105,115,125)
+data_5.7 <- data.frame(Age,Central_exposed_to_risk,Observed_number_of_death)
+data_5.7
+```
+
+Then we need to calculate the crude rate by $\mu_x=\frac{d_x}{E^{c}_{x}}$.
+```{r}
+# calculate crude rate qx
+# and add this column to the original dataframe
+data_5.7$Crude <- data_5.7$Observed_number_of_death/data_5.7$Central_exposed_to_risk
+data_5.7
+```
+
+We need to obtain the graduated estimates of $\mu_x$ by using Gompertz' Law and maximum likelihood. Hence the graduated estimates is $\hat{\mu_x} = Bc^{x}$. 
+
+We need to use maximum likelihood to get the value of parameters B and c. The model using in this question is a possion model, and the log-likelihood used for MLE is: $$lnL=\sum_{x=70}^{75}(-{E^{c}_x}Bc^x+d_xln({E^c_xBc^x})-ln(d_x!))$$
+
+We then need to write the function so that we can use the "nlm" function in r to get the MLE of B and c.
+```{r}
+# rename variables
+Ex_c <- data_5.7$Central_exposed_to_risk
+dx <- data_5.7$Observed_number_of_death
+x <- data_5.7$Age
+
+# create a function
+fn <- function(theta){
+  # mu_x = Bc^x
+  # B is theta[1], c is theta[2]
+  log_likelihood = -sum(Ex_c*theta[1]*theta[2]^x)+sum(dx*log(Ex_c*theta[1]*theta[2]^x)) 
+  return(-log_likelihood)
+}
+```
+
+Before we use the "nlm" function, we need to have some initial values for B and c. Initial values are calculated by using linear regression. Since $\hat{\mu_x} = Bc^{x}$, then $ln\hat{\mu_x} = a + bx$. And $ln\hat{\mu_x}$ is approximately equal to $ln{q_x}$. Therefore, we can use $ln{q_x} = a + bx$ to get the initial values of B and c by calculating exp(a) and exp(b) respectively.
+
+```{r}
+## linelar regression to estimate starting point for B & c
+qx <- data_5.7$Crude
+log_qx <- log(qx)
+lm(log_qx ~ x)
+start_B <- exp(-8.67325)
+start_c <- exp(0.08788)
+```
+
+Then sub the initial values of B and c into the "nlm" function to get the MLE of B and c.
+```{r}
+## use the starting point for MLE
+MLE <- nlm(fn,c(start_B,start_c))
+MLE
+B <- MLE$estimate[1]
+c <- MLE$estimate[2]
+```
+
+Now we can use $\hat{\mu_x} = Bc^{x}$ to calculate the graduated estimates of the force of mortality.
+```{r}
+## use the estimated B and c to calculate graduated estimate mu
+data_5.7$Graduated <- B*c^x
+data_5.7$Graduated
+data_5.7
+```
+
+
+#### Ex 5.8
+
+Create a dataframe with all the information.
+```{r}
+## create a dataframe
+Age <- c(30:49)
+Initial_exposed_to_risk <- c(70000,66672,68375,65420,61779,66091,68514,69560,
+                             65000,66279,67300,65368,65391,62917,66537,62302,
+                             62145,63856,61097,61110)
+Observed_number_of_death <- c(39,43,34,31,23,50,48,43,48,47,62,63,84,86,120,
+                              121,122,162,151,184)
+data_5.8 <- data.frame(Age,Initial_exposed_to_risk,Observed_number_of_death)
+data_5.8
+```
+
+Then we need to calculate the crude rate by $q_x=\frac{d_x}{E_x}$.
+```{r}
+## calcualte crude rate qx
+# and add this column to the original dataframe
+data_5.8$Crude <- Observed_number_of_death/Initial_exposed_to_risk
+data_5.8
+```
+
+We need to obtain the graduated estimates of mortality rate using $ln\frac{\hat{q_x}}{1-\hat{q_x}}=a+bx$ and weighted least squares. Hence, the function we need to create to calculate the values of a and b is: $$f(a,b)=\sum_{x=30}^{49}{w_x[ln\frac{\hat{q_x}}{1-\hat{q_x}}-(a+bx)]^2}$$
+
+For the equation above, $w_x$ is the weight, where in this case, $w_x=E_x$
+
+we then need to write the function so that we can use "nlm" to get the estimates of a and b.
+
+```{r}
+## rename the variables
+qx <- data_5.8$Crude
+wx <- data_5.8$Initial_exposed_to_risk
+x <- data_5.8$Age
+
+## calculate y useing y = ln(qx/1-qx)
+y <- log(qx/(1-qx))
+
+## set up a function
+fn <- function(theta){
+  # a is theta[1], b is theta[2]
+  f_ab <- sum(wx*(y-(theta[1]+theta[2]*x))^2)
+  return(f_ab)
+}
+```
+
+Before we use the "nlm" function, we need to have some initial values for a and b. Initial values are calculated by using linear regression. $ln\frac{\hat{q_x}}{1-\hat{q_x}}=a+bx$
+
+```{r}
+## linear regression 
+lm(y~x)
+start_a <- -10.8629
+start_b <- 0.1003
+```
+
+Then sub the initial values of a and b into the "nlm" function to get the MLE of a and b.
+```{r}
+## Calculating estimated values of a and b
+estimate <- nlm(fn,c(start_a,start_b))
+estimate
+a1 <- estimate$estimate[1]
+b1 <- estimate$estimate[2]
+```
+
+Now we can now calculate the graduated estimates of mortality by ranging $ln\frac{\hat{q_x}}{1-\hat{q_x}}=a+bx$ into $\hat{q_x}=\frac{e^{(a+bx)}}{1+e^{(a+bx)}}$
+
+```{r}
+## use the estimated a,b to calculate graduated qx
+## qx_grad = exp(a+bx)/(1+exp(a+bx))
+data_5.8$Graduated_1 <- exp(a1+b1*x)/(1+exp(a1+b1*x))
+data_5.8$Graduated_1
+data_5.8
+```
+
+Try other inital values to see if we can get a better estimates of mortality.
+```{r}
+## try with different intital values
+start_a = -10
+start_b = 0
+
+estimate <- nlm(fn,c(start_a,start_b))
+estimate
+a2 <- estimate$estimate[1]
+b2 <- estimate$estimate[2]
+
+## calculate new graduated value with new a and b
+data_5.8$Graduated_2 <- exp(a2+b2*x)/(1+exp(a2+b2*x))
+data_5.8$Graduated_2
+data_5.8
+```
+
+
+#### Ex 5.9
+
+Create a dataframe with all the information.
+```{r}
+## create a timeframe
+Age <- c(47:67)
+Initial_exposed_to_risk <- c(166,187,218,243,276,302,347,390,430,494,558,
+                             628,701,813,917,1040,1182,1299,1432,1596,1752)
+Observed_number_of_death <- c(2,2,4,6,2,4,7,3,9,9,8,11,14,18,18,24,30,43,41,
+                              54,64)
+Standard_table_figures <- c(0.00505,0.00570,0.00644,0.00728,0.00826,0.00930,
+                            0.01051,0.01184,0.01331,0.01492,0.01668,0.01859,
+                            0.02065,0.02287,0.02525,0.02778,0.03049,0.03339,
+                            0.03648,0.03978,0.04332)
+data_5.9 <- data.frame(Age,Initial_exposed_to_risk,Observed_number_of_death,
+                       Standard_table_figures)
+data_5.9
+```
+
+Then we need to calculate the crude rate by $q_x=\frac{d_x}{E_x}$.
+```{r}
+## calcuate crude rate qx
+data_5.9$Crude <- Observed_number_of_death/Initial_exposed_to_risk
+data_5.9
+```
+
+we need to obtain the graduated estimates of mortality rate by using standard table figures with $\hat{q_x}=a+b\hat{q_x}$ and weighted least squares. Hence, the function we need to create is $$f(a,b)=\sum_{x=47}^{67}{w_x[\hat{q_x}-(a+bq^s_x)]^2}$$
+
+For the equation above, $w_x$ is the weight, where in this case, $w_x=E_x$
+
+we then need to write the function so that we can use "nlm" to get the estimates of a and b.
+
+```{r}
+## rename variables
+qx <- data_5.9$Crude
+qx_s <- data_5.9$Standard_table_figures
+Wx <- data_5.9$Initial_exposed_to_risk
+
+## create a function
+fn <- function(theta){
+  # qx = a + b*qx_s
+  # a is theta[1], b is theta[2]
+  f_ab <- sum(Wx*(qx-(theta[1]+theta[2]*qx_s))^2)
+  return(f_ab)
+}
+```
+
+Before we use the "nlm" function, we need to have some initial values for a and b. Initial values are calculated by using linear regression. $\hat{q_x}=a+b\hat{q_x}$
+
+```{r}
+## linear regression to get the starting value for estimate a,b
+lm(qx~qx_s)
+start_a <- 0.009279
+start_b <- 0.570217
+```
+
+Then sub the initial values of a and b into the "nlm" function to get the estimated values of a and b.
+```{r}
+## Calculating estimated values of a and b
+estimate <- nlm(fn,c(start_a,start_b))
+estimate
+a <- estimate$estimate[1]
+b <- estimate$estimate[2]
+```
+
+Now we can calculating the graduated estimates of mortality by $\hat{q_x}=a+b\hat{q_x}$
+```{r}
+## calculate the graduated rate
+data_5.9$Graduated <- a + b*qx_s
+data_5.9$Graduated
+data_5.9
+```
+
+
+
+
+
+
+
