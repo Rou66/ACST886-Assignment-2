@@ -1,0 +1,147 @@
+---
+title: "Assignment 2"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Question 2
+
+First, we need to create a dataframe with all the infomration.
+```{r}
+## create a dataframe
+Age_Group <- c('40-44','45-49','50-54','55-59','60-64','65-69',
+               '70-74','75-79','80-84','85-89','90-94')
+Expose_To_Risk <- c(15518,19428,21594,21890,19174,15775,11414,6993,3276,1096,201)
+Actual_Death <- c(65,144,219,378,465,557,685,644,471,217,67)
+Expected_Death <-c(73.9,134.6,223.9,346.3,468.1,600.2,675.5,637.4,458.7,240.6,61.4)
+data <- data.frame(Age_Group,Expose_To_Risk,Actual_Death,Expected_Death)
+data
+```
+
+Then, we calcualte expected $q_x$ by $q_x=\frac{d_x}{E_x}$.
+```{r}
+qx <- Expected_Death/Expose_To_Risk
+```
+
+Now, we calculate the z score. $z_x=\frac{d_x-E_x\dot{q_x}}{\sqrt{E_x\dot{q_x}(1-\dot{q_x)}}}$
+```{r}
+## rename variables
+Ex <- data$Expose_To_Risk
+Actdx<- data$Actual_Death
+Expdx <- data$Expected_Death
+# calculate z score
+z_score <- (Actdx-Expdx)/sqrt(Expdx*(1-qx))
+z_score
+```
+
+##### Chi-square Test
+Chi-square test $\sum_{all\:ages}{z_x^2}$ follows $\chi^2(0.95)$. Degree of freedom in this case is number of age groups less 1.
+```{r}
+chi_2 <- sum(z_score^2)
+chi_2
+# get the critical value
+qchisq(0.95,10)
+```
+Since the calculated Chi-square test statistic is 12.35032 which is less than the critical value 18.30704. It is concluded that the null hypothesis cannot be rejected.
+
+
+##### Standardised Deviation Test
+Standardised deviation test $\sum_{all\:invervals}{\frac{(A-E)^2}{E}}$, follows $\chi^2(0.95)$ with degree of freedom equals number of intervals less 1.
+```{r}
+Exp <- 11*c(pnorm(-1), pnorm(0)-pnorm(-1), pnorm(1)-pnorm(0), 1-pnorm(1))
+Exp
+
+Act <- c(sum(z_score<(-1)), sum((z_score>-1)*(z_score<0)), 
+         sum((z_score>0)*(z_score<1)), sum(z_score>1))
+Act
+ISD <- sum((Exp-Act)^2/Exp)
+ISD
+## get the critical value
+## degree of freedom is number of intervals - 1
+qchisq(0.95,3)
+```
+Since the calculated standardised test statistic is 2.45344 which is less than the chi-square critical value 7.814728. Hence, the null hypothesis cannot be rejected.
+
+
+##### Culmulative Deviation Test
+Culmulative deviation test $\frac{\sum_{x}{(d_x-E_x\dot{q_x}})}{\sqrt{\sum_{x}{E_x\dot{q_x}(1-\dot{q_x})}}}$, then compare the absolute value of the calculated statsitic with 1.96. If the calcualted statsitic is larger than 1.96, the null hypothesis will be rejected.
+```{r}
+cum_score <- sum(Actdx-Expdx)/sqrt(sum(Expdx*(1-qx)))
+abs(cum_score)
+qnorm(1-0.05/2)
+```
+Since the calculated culmulative deviation test statistic is 0.1424776 which is less than standard nomral 95% critical value 1.96. Hence, null hypothesis cannot be rejected.
+
+
+##### Sign Test
+Under the null hypothesis, there should be roughly equal numbers of positive and negative deviations. Then for m samples, number of positive deviation is $Bi(m,0.5)$. For our case, with 11 age groups, it should follow $Bi(11,0.5)$. Then we can do a binomial test to see if the number of positive deviation follows $Bi(11,0.5)$
+```{r}
+## count number of positive 
+positive <- sum(z_score > 0)
+## check whether probablity of positive is 0.5
+binom.test(positive, 11, p=0.5, alternative = "two.sided")
+```
+Since the p-value of this test is 1 which is much larger than 0.05, the null hypothesis cannot be rejected.
+
+
+##### Grouping of Signs Test
+The null hypothesis for grouping of signs test is $z_x$ should change sign at a reasonable frequency. The critical value for this test is k and k is the smallest possible value for $\sum_{j=1}^{k}{\frac{{n_1\choose j-1}{n_2\choose j}}{{n_1+n_2\choose n_1}}}\geq0.05$. If number of distinct groups of postive $z_x$ is smaller than k, null hypothesis is rejected. 
+```{r}
+## count the number of postivie and negative
+m <- length(z_score)
+n1 <- sum(z_score > 0)
+n2 <- sum(z_score < 0)
+
+## write a function to calculate k
+fn <- function(k){
+  fn <- sum(choose(n1-1,k-1)*choose(n2+1,k)/choose(n1+n2,n1))
+  return(fn)
+}
+
+temp <- fn(1)
+for(k in 1:m){
+  if(temp < 0.05){
+    temp= temp + fn(k)
+  }else{
+    break("")
+  }
+}
+##
+print(k)
+```
+There are 4 distinct groups of positive $z_x$ for our sample, it is greater than k which is 3, hence the null hypothesis cannot be rejected.
+
+##### Serial Correlations Test
+Swerial correlations test statistic $\frac{\sum_{i=1}^{m-1}{(z_i-\bar{z}^{(1)})(z_{i+1}-\bar{z}^{(2)})}}{\sqrt{\sum_{i=1}^{m-1}{(z_i-\bar{z}^{(1)})^2\sum_{i=1}^{m-1}{(z_{i+1}-\bar{z}^{(2)}})^2}}}\sqrt{m-1}$, where $\bar{z}^{(1)}=\sum_{i=1}^{m-1}{\frac{z_i}{m-1}}$ and $\bar{z}^{(2)}=\sum_{i=1}^{m-1}{\frac{z_{i+1}}{m-1}}$. If the calculated statsitic is larger than standard normal 95% critical value, the null hypothesis will be rejected.
+```{r}
+m <- length(z_score)
+z1 <- sum(z_score[1:10]/(m-1))
+z2 <- sum(z_score[2:11]/(m-1))
+numerator <- sum((z_score[1:10]-z1)*(z_score[2:11]))*sqrt(m-1)
+denominator <- sqrt(sum((z_score[1:10]-z1)^2)*sum((z_score[2:11]-z2)^2))
+serial_test <- numerator/denominator
+#compare the serial test statistic with 95% standard normal critical value
+abs(serial_test)
+## 95% critical value one tailed
+qnorm(0.95)
+```
+Since the absolute value of the calculated test statistic is 1.262873 which is less than the 95% standard normal 95% criticial value 1.64, the null hypothesis cannot be rejected.
+
+##### Conclusion
+By doing six different tests, results from all six tests suggest that the null hypothesis: the graduated estimates are close to data, cannot be rejected.
+
+
+
+
+
+
+
+
+
+
+
