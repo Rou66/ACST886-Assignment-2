@@ -1,6 +1,7 @@
 ---
 title: "Assignment 2"
 output:
+  word_document: default
   pdf_document: default
   html_document: default
 ---
@@ -133,7 +134,7 @@ qnorm(0.95)
 Since the absolute value of the calculated test statistic is 1.262873 which is less than the 95% standard normal 95% criticial value 1.64, the null hypothesis cannot be rejected.
 
 ##### Conclusion
-By doing six different tests, results from all six tests suggest that the null hypothesis: the graduated estimates are close to data, cannot be rejected.
+By doing six different tests, results from all six tests suggest that the null hypothesis: the graduated estimates are close to data, cannot be rejected. Hence, the graduated rate are close to the data.
 
 
 
